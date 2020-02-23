@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Threading;
 using System.Threading.Tasks;
 using HueLightDJ.Effects.Base;
@@ -13,12 +13,7 @@ namespace HueLightDJ.Effects
   {
     public async Task Start(EntertainmentLayer layer, Func<TimeSpan> waitTime, RGBColor? color, CancellationToken cancellationToken)
     {
-      Colors.Add(RGBColorPicker.Orange);
-      Colors.Add(RGBColorPicker.Pink);
-      Colors.Add(RGBColorPicker.Yellow);
-      Colors.Add(new RGBColor(255, 0, 0)); // R
-      Colors.Add(new RGBColor(0, 255, 0)); // G
-      Colors.Add(new RGBColor(0, 0, 255)); // B
+      Colors.AddRange(RGBColorPicker.DiscoColors);
       Colors.Add(RGBColor.Random());
 
       while (!cancellationToken.IsCancellationRequested)

@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -10,47 +11,33 @@ using Q42.HueApi.Streaming.Models;
 
 namespace HueLightDJ.Effects
 {
-  [HueEffect(Name = "Jesse Custom 3", Group = "Party", HasColorPicker = false)]
-  public class RandomColorsCustom3Effect : CustomBaseEffect, IHueEffect
+  [HueEffect(Name = "Jesse Custom 5", Group = "Party", HasColorPicker = false)]
+  public class RandomColorsCustom5Effect : CustomBaseEffect, IHueEffect
   {
     public async Task Start(EntertainmentLayer layer, Func<TimeSpan> waitTime, RGBColor? color, CancellationToken cancellationToken)
     {
       var center = EffectSettings.LocationCenter;
       var orderedByAngle = layer.OrderBy(x => x.LightLocation.Angle(center.X, center.Y)).ToList();
-
-      var baseColors = RGBColorPicker.DiscoColors;
-      var baseIndex = 0;
-
+      
+      Colors = RGBColorPicker.DiscoColors;
+            
       while (!cancellationToken.IsCancellationRequested)
       {
-        Colors.Clear();
-        var color1 = RGBColor.Random();
-        var color2 = GetNext(baseColors, ref baseIndex);
-        
-        Colors.Add(color1);
-        for (var i = 0; i < layer.Count; i++)
-        {
-          Colors.Add(color2);
-        }
-
-        var brightness = (double)Random.Next(70, 100) / 100;
+        var rndColor = GetNext();
 
         for (var i = 0; i < layer.Count; i++)
         {
           foreach (var light in orderedByAngle)
           {
-            var rndColor = GetNext();
-            
             if (light.State.RGBColor.ToHex() != rndColor.ToHex())
             {
-              light.SetState(cancellationToken, rndColor, waitTime() / 2, brightness);
+              light.SetState(cancellationToken, rndColor, waitTime() / 2, 1);
+              break;
             }
           }
+
           await Task.Delay(waitTime(), cancellationToken);
-
         }
-
-        Index++;
       }
     }
   }

@@ -187,11 +187,17 @@ namespace HueLightDJ.Web.Streaming
         var random = new Random();
         while (!autoModeCts.IsCancellationRequested)
         {
-          var brightness = (byte)random.Next(1, 150);
-          StreamingSetup.SetWhiteLight(true, brightness);
+          if (!strobeState)
+          {
+            var brightness = (byte) random.Next(1, 150);
+            StreamingSetup.SetWhiteLight(true, brightness);
+            await Task.Delay(TimeSpan.FromSeconds(1));
 
-          await Task.Delay(TimeSpan.FromSeconds(1));
-          StreamingSetup.SetWhiteLight(false, brightness);
+          }
+
+          StreamingSetup.SetWhiteLight(false, 1);
+          await Task.Delay(TimeSpan.FromSeconds(0.5));
+
         }
 
         StreamingSetup.SetWhiteLight(false, 0);
@@ -341,7 +347,9 @@ namespace HueLightDJ.Web.Streaming
              ||*/ x.Name == typeof(RandomColorsCustom1Effect).Name
              || x.Name == typeof(RandomColorsCustom2Effect).Name
              || x.Name == typeof(RandomColorsCustom3Effect).Name
-             || x.Name == typeof(RandomColorRangeEffect).Name)
+             || x.Name == typeof(RandomColorsCustom4Effect).Name
+             || x.Name == typeof(RandomColorsCustom5Effect).Name
+             )
             .ToList();
 
       var effect = effects[Random.Next(effects.Count)].Name;
