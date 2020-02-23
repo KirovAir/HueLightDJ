@@ -23,7 +23,8 @@ namespace HueLightDJ.Effects.Layers
       var center = EffectSettings.LocationCenter;
       var rotatingEffect = new RotatingLineEffect(cancellationToken, color.Value, customWaitTime);
       rotatingEffect.X = center.X;
-      rotatingEffect.Y = center.Y; layer.PlaceEffect(rotatingEffect);
+      rotatingEffect.Y = center.Y;
+      layer.PlaceEffect(rotatingEffect);
       rotatingEffect.Start();
 
       cancellationToken.Register(() => {

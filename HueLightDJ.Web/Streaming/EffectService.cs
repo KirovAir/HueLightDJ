@@ -79,7 +79,7 @@ namespace HueLightDJ.Web.Streaming
         effect.TypeName = type.Name;
         effect.HasColorPicker = hueEffectAtt.HasColorPicker;
 
-        if(!string.IsNullOrEmpty(hueEffectAtt.DefaultColor))
+        if (!string.IsNullOrEmpty(hueEffectAtt.DefaultColor))
         {
           effect.Color = hueEffectAtt.DefaultColor;
           effect.IsRandom = false;
@@ -117,7 +117,7 @@ namespace HueLightDJ.Web.Streaming
       }
 
       List<string> iteratorNames = new List<string>();
-      foreach(var name in Enum.GetNames(typeof(IteratorEffectMode)))
+      foreach (var name in Enum.GetNames(typeof(IteratorEffectMode)))
       {
         iteratorNames.Add(name);
       }
@@ -143,7 +143,7 @@ namespace HueLightDJ.Web.Streaming
 
     public static void StopEffects()
     {
-      foreach(var layer in layerInfo)
+      foreach (var layer in layerInfo)
       {
         layer.Value?.CancellationTokenSource?.Cancel();
       }
@@ -156,13 +156,45 @@ namespace HueLightDJ.Web.Streaming
 
       Task.Run(async () =>
       {
-        while(!autoModeCts.IsCancellationRequested)
+        while (!autoModeCts.IsCancellationRequested)
         {
           StartRandomEffect(AutoModeHasRandomEffects);
 
           var secondsToWait = StreamingSetup.WaitTime.Value.TotalSeconds > 1 ? 18 : 6; //low bpm? play effect longer
-          await Task.Delay(TimeSpan.FromSeconds(secondsToWait));
+
+          while (secondsToWait >= 0 && !strobeState)
+          {
+            await Task.Delay(TimeSpan.FromSeconds(1));
+
+            secondsToWait--;
+          }
+
+          if (strobeState) // Start strobe effect.
+          {
+            GenerateRandomEffectSettings(out RGBColor hexColor, out _, out _);
+            StartEffect("RotatingEffect", hexColor.ToHex());
+
+            while (!autoModeCts.IsCancellationRequested && strobeState)
+            {
+              await Task.Delay(TimeSpan.FromSeconds(1)); // Keep waiting until strobe is done.
+            }
+          }
         }
+      }, autoModeCts.Token);
+
+      Task.Run(async () =>
+      {
+        var random = new Random();
+        while (!autoModeCts.IsCancellationRequested)
+        {
+          var brightness = (byte)random.Next(1, 150);
+          StreamingSetup.SetWhiteLight(true, brightness);
+
+          await Task.Delay(TimeSpan.FromSeconds(1));
+          StreamingSetup.SetWhiteLight(false, brightness);
+        }
+
+        StreamingSetup.SetWhiteLight(false, 0);
       }, autoModeCts.Token);
 
       Task.Run(async () =>
@@ -222,8 +254,8 @@ namespace HueLightDJ.Web.Streaming
         if (!string.IsNullOrEmpty(colorHex))
           color = new RGBColor(colorHex);
 
-       
-        if(isGroupEffect)
+
+        if (isGroupEffect)
         {
           //get group
           var selectedGroup = GroupService.GetAll(layer).Where(x => x.Name == group).Select(x => x.Lights).FirstOrDefault();
@@ -234,7 +266,7 @@ namespace HueLightDJ.Web.Streaming
         {
           StartEffect(cts.Token, selectedEffect, layer, waitTime, color);
         }
-        
+
       }
     }
 
@@ -248,9 +280,9 @@ namespace HueLightDJ.Web.Streaming
       if (group == null)
         group = GroupService.GetRandomGroup();
 
-      object[] parametersArray = new object[] { group, waitTime, color, iteratorMode, secondaryIteratorMode, ctsToken};
+      object[] parametersArray = new object[] { group, waitTime, color, iteratorMode, secondaryIteratorMode, ctsToken };
 
-     
+
       object? classInstance = Activator.CreateInstance(selectedEffect, null);
       methodInfo.Invoke(classInstance, parametersArray);
 
@@ -299,16 +331,36 @@ namespace HueLightDJ.Web.Streaming
 
     }
 
+    static readonly Random Random = new Random();
     public static void StartRandomEffect(bool withRandomEffects = true)
     {
-      var r = new Random();
+      var all = GetEffectTypes();
 
+      var effects = all.Where(
+        x =>/* x.Name == typeof(ColorloopWheelDoubleEffect).Name
+             ||*/ x.Name == typeof(RandomColorsCustom1Effect).Name
+             || x.Name == typeof(RandomColorsCustom2Effect).Name
+             || x.Name == typeof(RandomColorsCustom3Effect).Name
+             || x.Name == typeof(RandomColorRangeEffect).Name)
+            .ToList();
+
+      var effect = effects[Random.Next(effects.Count)].Name;
+
+      GenerateRandomEffectSettings(out RGBColor hexColor, out _, out _);
+
+      StartEffect(effect, hexColor.ToHex());
+
+
+    }
+
+    public static void StartRandomEffect2(bool withRandomEffects = true)
+    {
       var all = GetEffectTypes();
       var allGroup = GetGroupEffectTypes();
 
 
 
-      if (r.NextDouble() <= (withRandomEffects ? 0.4 : 0))
+      if (Random.NextDouble() <= (withRandomEffects ? 0.4 : 0))
         StartRandomGroupEffect();
       else
       {
@@ -358,7 +410,7 @@ namespace HueLightDJ.Web.Streaming
         var section = group.Lights[i];
         GenerateRandomEffectSettings(out RGBColor hexColor, out IteratorEffectMode iteratorMode, out IteratorEffectMode iteratorSecondaryMode);
 
-        if(group.Lights.Count == 1
+        if (group.Lights.Count == 1
           && iteratorSecondaryMode != IteratorEffectMode.All
           && (effects[i] == typeof(HueLightDJ.Effects.Group.RandomColorsEffect) || effects[i] == typeof(HueLightDJ.Effects.Group.RandomColorloopEffect))
           )
@@ -427,7 +479,7 @@ namespace HueLightDJ.Web.Streaming
     {
       StopAutoMode();
 
-      foreach(var layer in layerInfo)
+      foreach (var layer in layerInfo)
       {
         layer.Value?.CancellationTokenSource?.Cancel();
       }
@@ -453,6 +505,13 @@ namespace HueLightDJ.Web.Streaming
       Func<TimeSpan> waitTime = () => TimeSpan.FromMilliseconds(100);
 
       StartEffect(default(CancellationToken), typeof(FlashFadeEffect).GetTypeInfo(), effectLayer, waitTime, RGBColor.Random());
+    }
+
+    private static bool strobeState;
+    public static void ToggleStrobe()
+    {
+      strobeState = !strobeState;
+      StreamingSetup.SetStrobe(strobeState);
     }
   }
 }

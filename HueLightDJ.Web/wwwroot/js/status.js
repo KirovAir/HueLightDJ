@@ -102,6 +102,9 @@ const vuedj = new Vue({
     beat() {
       connection.invoke("Beat", 1).catch(err => console.error(err.toString()));
     },
+    strobe() {
+      connection.invoke("Strobe").catch(err => console.error(err.toString()));
+    },
     connect(name) {
       connection.invoke('Connect', name);
     },

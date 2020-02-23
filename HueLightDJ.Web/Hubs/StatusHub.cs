@@ -142,6 +142,10 @@ namespace HueLightDJ.Web.Hubs
       EffectService.Beat(intensity);
     }
 
+    public void Strobe()
+    {
+      EffectService.ToggleStrobe();
+    }
     public async Task Disconnect()
     {
       EffectService.CancelAllEffects();

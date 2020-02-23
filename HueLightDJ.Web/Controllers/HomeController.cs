@@ -76,9 +76,13 @@ namespace HueLightDJ.Web.Controllers
 
       var allLights = await hueClient.GetLightsAsync();
       string? groupId = "GroupId";
-
-      if(allLights.Any())
-        groupId = await hueClient.CreateGroupAsync(allLights.Take(10).Select(x => x.Id), "Hue Light DJ group", Q42.HueApi.Models.Groups.RoomClass.TV, Q42.HueApi.Models.Groups.GroupType.Entertainment);
+      var groups = await hueClient.GetGroupsAsync();
+      groupId = groups.FirstOrDefault(c => c.Name == "HueDJ")?.Id;
+      //if (allLights.Any())
+      /*{
+        var ids = allLights.Take(10).Select(x => x.UniqueId).ToList();
+        groupId = await hueClient.CreateGroupAsync(ids, "Hue Light DJ group", RoomClass.TV, GroupType.Entertainment);
+      }*/
 
       var connection = new ConnectionConfiguration()
       {

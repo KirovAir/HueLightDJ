@@ -29,11 +29,13 @@ namespace HueLightDJ.Web.Streaming
     private static int BPM { get; set; } = 120;
     public static Ref<TimeSpan> WaitTime { get; set; } = TimeSpan.FromMilliseconds(500);
 
-    
+    private static Light StrobeLight { get; set; }
+    private static Light WhiteLight { get; set; }
+    private static ILocalHueClient StrobeHue { get; set; }
 
     public static GroupConfiguration? CurrentConnection { get; set; }
 
-   
+
 
     private static string _groupId;
     private static CancellationTokenSource _cts;
@@ -75,12 +77,12 @@ namespace HueLightDJ.Web.Streaming
 
       var grouped = locations.GroupBy(x => x.Bridge);
 
-      foreach(var group in grouped)
+      foreach (var group in grouped)
       {
         var ip = group.Key;
         var groupId = group.First().GroupId;
         var config = configSection.SelectMany(x => x.Connections).Where(x => x.Ip == ip && x.GroupId == groupId).FirstOrDefault();
-        if(config != null)
+        if (config != null)
         {
           var client = new LocalHueClient(config.Ip, config.Key);
           var bridgeLocations = group.ToDictionary(x => x.Id, l => new LightLocation() { l.X, l.Y, 0 });
@@ -133,12 +135,26 @@ namespace HueLightDJ.Web.Streaming
       //Connect in parallel and wait for all tasks to finish
       await Task.WhenAll(connectTasks);
 
+      foreach (var client in StreamingHueClients)
+      {
+        var localClient = client.LocalHueClient;
+        var lights = await localClient.GetLightsAsync();
+        var light = lights.FirstOrDefault(c => c.Name.ToLower().Contains("strobe"));
+        if (light != null)
+        {
+          StrobeLight = light;
+          StrobeHue = localClient;
+          WhiteLight = lights.FirstOrDefault(c => c.Name.ToLower().Contains("kitchen"));
+          break;
+        }
+      }
+
       var baseLayer = GetNewLayer(isBaseLayer: true);
       var effectLayer = GetNewLayer(isBaseLayer: false);
 
       Layers = new List<EntertainmentLayer>() { baseLayer, effectLayer };
       CurrentConnection = currentGroup;
-      EffectSettings.LocationCenter = currentGroup.LocationCenter ?? new LightLocation() { 0,0,0};
+      EffectSettings.LocationCenter = currentGroup.LocationCenter ?? new LightLocation() { 0, 0, 0 };
 
       //Optional: calculated effects that are placed on this layer
       baseLayer.AutoCalculateEffectUpdate(_cts.Token);
@@ -166,7 +182,7 @@ namespace HueLightDJ.Web.Streaming
         else
         {
           var all = await client.LocalHueClient.GetEntertainmentGroups();
-          var group = all.Where(x => x.Id == bridgeConfig.GroupId).FirstOrDefault();
+          var group = all.FirstOrDefault(x => x.Id == bridgeConfig.GroupId);
 
           if (group == null)
             throw new Exception($"No Entertainment Group found with id {bridgeConfig.GroupId}. Create one using the Philips Hue App or the Q42.HueApi.UniversalWindows.Sample");
@@ -194,9 +210,7 @@ namespace HueLightDJ.Web.Streaming
 
         StreamingHueClients.Add(client);
         StreamingGroups.Add(stream);
-
         await hub.Clients.All.SendAsync("StatusMsg", $"Succesfully connected to bridge {bridgeConfig.Ip}");
-
       }
       catch (Exception ex)
       {
@@ -270,7 +284,7 @@ namespace HueLightDJ.Web.Streaming
       StreamingHueClients.Clear();
       StreamingGroups.Clear();
       CurrentConnection = null;
-     
+
     }
 
     public async static Task<bool> IsStreamingActive()
@@ -284,6 +298,21 @@ namespace HueLightDJ.Web.Streaming
 
       return bridgeInfo.IsStreamingActive;
 
+    }
+
+    public static void SetStrobe(bool on)
+    {
+      var command = new LightCommand();
+      command.On = on;
+      StrobeHue.SendCommandAsync(command, new[] { StrobeLight.Id });
+    }
+
+    public static void SetWhiteLight(bool on, byte brightness)
+    {
+      var command = new LightCommand();
+      command.On = on;
+      command.Brightness = brightness;
+      StrobeHue.SendCommandAsync(command, new[] { WhiteLight.Id });
     }
 
     public static int GetBPM()
