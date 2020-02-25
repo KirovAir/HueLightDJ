@@ -26,24 +26,31 @@ namespace HueLightDJ.Effects
         Colors.Clear();
         var color1 = RGBColor.Random();
         var color2 = GetNext(baseColors, ref baseIndex);
-        
-        Colors.Add(color1);
+
+        for (var i = 0; i < ChangeAmount; i++)
+          Colors.Add(color1);
+
         for (var i = 0; i < layer.Count; i++)
         {
           Colors.Add(color2);
         }
 
-        var brightness = (double)Random.Next(70, 100) / 100;
+        var brightness = RandomBrightness();
 
         for (var i = 0; i < layer.Count; i++)
         {
+          var bri = HiLowBrightness();
           foreach (var light in orderedByAngle)
           {
             var rndColor = GetNext();
             
             if (light.State.RGBColor.ToHex() != rndColor.ToHex())
             {
-              light.SetState(cancellationToken, rndColor, waitTime() / 2, brightness);
+              light.SetState(cancellationToken, rndColor, waitTime() / 2, brightness, waitTime() / 2);
+            }
+            else
+            {
+              light.SetBrightness(cancellationToken, bri, waitTime() / 2);
             }
           }
           await Task.Delay(waitTime(), cancellationToken);

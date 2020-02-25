@@ -132,6 +132,9 @@ connection.start()
 function setBri(value) {
   connection.invoke("SetBri", value).catch(err => console.error(err.toString()));
 }
+function setChangeAmount(value) {
+  connection.invoke("SetChangeAmount", value).catch(err => console.error(err.toString()));
+}
 
 function startShortEffect(key) {
   var index = key - 1;
@@ -160,9 +163,10 @@ Mousetrap.bindGlobal(['f1', 'f2', 'f3', 'f4', 'f5', 'f6', 'f7', 'f8', 'f9', 'f10
 });
 
 Mousetrap.bindGlobal(['1', '2', '3', '4', '5', '6', '7', '8', '9'], function (e, key) { startShortEffect(key); });
-Mousetrap.bindGlobal('w', function () { document.getElementById('briRange').value = 100; setBri(0) });
-Mousetrap.bindGlobal('s', function () { document.getElementById('briRange').value = 50; setBri(0.5) });
-Mousetrap.bindGlobal('x', function () { document.getElementById('briRange').value = 0; setBri(1) });
+Mousetrap.bindGlobal('q', function () { vuedj.strobe();  });
+Mousetrap.bindGlobal('w', function () { document.getElementById('amountChange').value = 3; setChangeAmount(3) });
+Mousetrap.bindGlobal('s', function () { document.getElementById('amountChange').value = 2; setChangeAmount(2) });
+Mousetrap.bindGlobal('x', function () { document.getElementById('amountChange').value = 1; setChangeAmount(1) });
 Mousetrap.bindGlobal('r', function () { vuedj.startRandom(); });
 Mousetrap.bindGlobal('esc', function () { vuedj.stopEffects(); });
 Mousetrap.bindGlobal('b', function () { vuedj.beat(); });

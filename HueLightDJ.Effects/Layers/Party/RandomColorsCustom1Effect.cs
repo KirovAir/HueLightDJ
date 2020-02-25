@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading;
@@ -15,30 +16,51 @@ namespace HueLightDJ.Effects
   {
     public async Task Start(EntertainmentLayer layer, Func<TimeSpan> waitTime, RGBColor? color, CancellationToken cancellationToken)
     {
+      var doneIds = new List<byte>();
+
       while (!cancellationToken.IsCancellationRequested)
       {
         Colors.Clear();
-        Colors.AddRange(RGBColorPicker.DiscoColors);
-        Colors.Add(RGBColor.Random());
-        Colors.Add(RGBColor.Random());
-        Colors.Add(RGBColor.Random());
-        Shuffle(Colors);
+
+        if (Random.Next(2) != 2)
+        {
+          Colors.AddRange(RGBColorPicker.DoubleDisco);
+        }
+        else
+        {
+          Colors.AddRange(RGBColorPicker.DiscoColors);
+          Shuffle(Colors);
+        }
 
         for (var i = 0; i < 5; i++)
         {
           var brightness = RandomBrightness();
-          foreach (var light in layer.OrderBy(c => Guid.NewGuid()).Take(2))
+          var otherBrightness = HiLowBrightness();
+          var count = 0;
+
+          foreach (var light in layer.OrderBy(c => Guid.NewGuid()))
           {
-            //if (Random.Next(4) != 1)
-            //{
-            //  continue;
-            //}
-            var rndColor = GetNext();
-            var copyColor = new RGBColor(rndColor.ToHex());
-            light.SetState(cancellationToken, copyColor, waitTime() / 2, brightness, waitTime() / 2);
+            count++;
+
+            if (count <= ChangeAmount)
+            {
+              var rndColor = GetNext();
+              var copyColor = new RGBColor(rndColor.ToHex());
+              light.SetState(cancellationToken, copyColor, waitTime() / 2, brightness, waitTime() / 2);
+              doneIds.Add(light.Id);
+              continue;
+            }
+
+            foreach (var otherLight in layer.Where(c => !doneIds.Contains(c.Id)))
+            {
+              otherLight.SetBrightness(cancellationToken, otherBrightness, waitTime() / 2);
+            }
+
+            doneIds.Clear();
+            await Task.Delay(waitTime(), cancellationToken);
+            count = 0;
           }
 
-          await Task.Delay(waitTime(), cancellationToken);
         }
       }
     }

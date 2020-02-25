@@ -24,6 +24,7 @@ namespace HueLightDJ.Effects
       collections.Add(layer);
 
       Colors = RGBColorPicker.DiscoColors;
+      var doneIds = new List<byte>();
 
       while (!cancellationToken.IsCancellationRequested)
       {
@@ -31,15 +32,18 @@ namespace HueLightDJ.Effects
         {
           var lights = collections[index];
           var rndColor = GetNext();
+          var otherBrightness = HiLowBrightness();
 
           for (var i = 0; i < Math.Ceiling((double) layer.Count / 2); i++)
           {
             var brightness = RandomBrightness();
+
             foreach (var light in lights)
             {
               if (light.State.RGBColor.ToHex() != rndColor.ToHex())
               {
                 light.SetState(cancellationToken, rndColor, waitTime() / 2, brightness, waitTime()/2);
+                doneIds.Add(light.Id);
                 break;
               }
             }
@@ -50,10 +54,17 @@ namespace HueLightDJ.Effects
               if (light.State.RGBColor.ToHex() != rndColor.ToHex())
               {
                 light.SetState(cancellationToken, rndColor, waitTime() / 2, brightness, waitTime() / 2);
+                doneIds.Add(light.Id);
                 break;
               }
             }
 
+            foreach (var otherLight in layer.Where(c => !doneIds.Contains(c.Id)))
+            {
+              otherLight.SetBrightness(cancellationToken, otherBrightness, waitTime() / 2);
+            }
+
+            doneIds.Clear();
             await Task.Delay(waitTime(), cancellationToken);
           }
         }

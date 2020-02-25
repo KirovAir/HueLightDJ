@@ -71,9 +71,8 @@
             <button v-on:click="startAutoMode" v-show="status.isAutoMode == false" class="btn btn-dark">start auto mode</button>
             <button v-on:click="stopAutoMode" v-show="status.isAutoMode == true" class="btn btn-dark">stop auto mode</button>
 
-            <button v-on:click="toggleAutoRandomMode" v-show="status.isAutoMode == true && status.autoModeHasRandomEffects == false" class="btn btn-dark">generate random groups and effects</button>
-            <button v-on:click="toggleAutoRandomMode" v-show="status.isAutoMode == true && status.autoModeHasRandomEffects == true" class="btn btn-dark">only predefined effects</button>
-
+            <button v-on:click="toggleAutoRandomMode" v-show="status.isAutoMode == true && status.autoModeHasRandomEffects == false" class="btn btn-dark">All effects</button>
+            <button v-on:click="toggleAutoRandomMode" v-show="status.isAutoMode == true && status.autoModeHasRandomEffects == true" class="btn btn-dark">Safe mode</button>
           </div>
           <button v-on:click="stopEffects" class="btn btn-dark">stop all effects</button>
           <button v-on:click="beat" class="btn btn-dark">beat</button>
@@ -82,10 +81,15 @@
         </div>
 
         <br />
-        <br />
         <div>
-          <span title="Shortcut: W / S / X">Brightness:</span> <br />
-          <input title="Shortcut: W / S / X" type="range" min="0" max="100" value="100" style="width:400px" class="form-control" oninput="setBri(Math.abs((this.value/100) - 1))" id="briRange">
+          <span title="Shortcut: W / S / X">Changes:</span> <br />
+          <input title="Shortcut: W / S / X" type="range" min="1" max="3" value="1" style="width:400px" class="form-control" oninput="setChangeAmount(Math.abs(this.value))" id="amountChange">
+        </div>
+        <br />
+
+        <div>
+          <span>Brightness:</span> <br />
+          <input type="range" min="0" max="100" value="100" style="width:400px" class="form-control" oninput="setBri(Math.abs((this.value/100) - 1))" id="briRange">
         </div>
       </div>
       <div class="col-sm">

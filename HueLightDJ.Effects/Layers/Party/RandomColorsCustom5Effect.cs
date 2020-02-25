@@ -20,21 +20,32 @@ namespace HueLightDJ.Effects
       var orderedByAngle = layer.OrderBy(x => x.LightLocation.Angle(center.X, center.Y)).ToList();
       
       Colors = RGBColorPicker.DiscoColors;
-            
+      var doneIds = new List<byte>();
+
       while (!cancellationToken.IsCancellationRequested)
       {
         var rndColor = GetNext();
 
         for (var i = 0; i < layer.Count; i++)
         {
+          var otherBrightness = HiLowBrightness();
+
           foreach (var light in orderedByAngle)
           {
             if (light.State.RGBColor.ToHex() != rndColor.ToHex())
             {
-              light.SetState(cancellationToken, rndColor, waitTime() / 2, 1);
+              light.SetState(cancellationToken, rndColor, waitTime() / 2, RandomBrightness(), waitTime() / 2);
+              doneIds.Add(light.Id);
               break;
             }
           }
+
+          foreach (var otherLight in layer.Where(c => !doneIds.Contains(c.Id)))
+          {
+            otherLight.SetBrightness(cancellationToken, otherBrightness, waitTime() / 2);
+          }
+
+          doneIds.Clear();
 
           await Task.Delay(waitTime(), cancellationToken);
         }

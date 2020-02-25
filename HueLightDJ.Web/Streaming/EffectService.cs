@@ -189,9 +189,9 @@ namespace HueLightDJ.Web.Streaming
         {
           if (!strobeState)
           {
-            var brightness = (byte) random.Next(1, 150);
+            var brightness = (byte) random.Next(50, 100);
             StreamingSetup.SetWhiteLight(true, brightness);
-            await Task.Delay(TimeSpan.FromSeconds(1));
+            await Task.Delay(TimeSpan.FromSeconds(1.5));
 
           }
 
@@ -342,15 +342,26 @@ namespace HueLightDJ.Web.Streaming
     {
       var all = GetEffectTypes();
 
-      var effects = all.Where(
-        x =>/* x.Name == typeof(ColorloopWheelDoubleEffect).Name
+      List<TypeInfo> effects;
+      if (withRandomEffects)
+      {
+        effects = all.Where(
+            x => /* x.Name == typeof(ColorloopWheelDoubleEffect).Name
              ||*/ x.Name == typeof(RandomColorsCustom1Effect).Name
-             || x.Name == typeof(RandomColorsCustom2Effect).Name
-             || x.Name == typeof(RandomColorsCustom3Effect).Name
-             || x.Name == typeof(RandomColorsCustom4Effect).Name
-             || x.Name == typeof(RandomColorsCustom5Effect).Name
-             )
-            .ToList();
+                  || x.Name == typeof(RandomColorsCustom2Effect).Name
+                  || x.Name == typeof(RandomColorsCustom3Effect).Name
+                  || x.Name == typeof(RandomColorsCustom4Effect).Name
+                  || x.Name == typeof(RandomColorsCustom5Effect).Name
+          )
+          .ToList();
+      } else
+      {
+        effects = all.Where(
+            x => 
+                  x.Name == typeof(RandomColorsCustom1Effect).Name
+          )
+          .ToList();
+      }
 
       var effect = effects[Random.Next(effects.Count)].Name;
 

@@ -13,28 +13,46 @@ namespace HueLightDJ.Effects
   {
     public async Task Start(EntertainmentLayer layer, Func<TimeSpan> waitTime, RGBColor? color, CancellationToken cancellationToken)
     {
-      Colors.AddRange(RGBColorPicker.DiscoColors);
-      Colors.Add(RGBColor.Random());
-
+      var dDisco = true;
       while (!cancellationToken.IsCancellationRequested)
       {
-        var x = 0;
-        var rndColor = GetNext();
-        foreach (var light in layer)
+        dDisco = !dDisco;
+        Colors.Clear();
+        Colors.AddRange(dDisco || ChangeAmount < 2 ? RGBColorPicker.DoubleDisco : RGBColorPicker.DiscoColors);
+        if (ChangeAmount == 1)
         {
-          x++;
-          if (x > 2)
-          {
-            x = 0;
-            rndColor = GetNext();
-          }
-          //var rndColor = RGBColor.Random(_random);
-          //var rndColor = colors[_random.Next(colors.Count)];
-          var copyColor = new RGBColor(rndColor.ToHex());
-          light.SetState(cancellationToken, copyColor, waitTime() / 2, 1);
-
+          Colors.RemoveAt(Colors.Count - 1);
         }
-        await Task.Delay(waitTime() * 2, cancellationToken);
+        for (var i = 0; i < 4; i++)
+        {
+          var bri = HiLowBrightness();
+          var x = 0;
+          var rndColor = GetNext();
+          foreach (var light in layer)
+          {
+            x++;
+            if (x > 4)
+            {
+              x = 0;
+              rndColor = GetNext();
+            }
+
+            light.SetState(cancellationToken, rndColor, waitTime() / 2, bri, waitTime() / 2);
+          }
+
+          await Task.Delay(waitTime(), cancellationToken);
+
+          for (var ch = 0; ch < ChangeAmount; ch++)
+            HiLowBrightness();
+
+          bri = HiLowBrightness();
+          foreach (var light in layer)
+          {
+            light.SetBrightness(cancellationToken, bri, waitTime() / 2);
+          }
+
+          await Task.Delay(waitTime(), cancellationToken);
+        }
       }
     }
   }

@@ -6,14 +6,22 @@ namespace HueLightDJ.Effects
 {
   public class CustomBaseEffect
   {
+    public static int ChangeAmount { get; set; } = 1;
     public readonly Random Random = new Random();
     public int Index = 0;
     public List<RGBColor> Colors = new List<RGBColor>();
 
     public double RandomBrightness()
     {
-      var brightness = (double)Random.Next(85, 100) / 100;
+      var brightness = (double)Random.Next(100, 100) / 100;
       return brightness;
+    }
+
+    private static readonly List<double> HighLowBri = new List<double> { 0.6, 0.7, 0.8, 0.9, 1, 0.9, 0.8, 0.7 };
+    private int _highLowBriIndex = 0;
+    public double HiLowBrightness()
+    {
+      return GetNext(HighLowBri, ref _highLowBriIndex);
     }
 
     public RGBColor GetNext()
@@ -51,7 +59,6 @@ namespace HueLightDJ.Effects
     public static RGBColor Aqua { get; set; } = new RGBColor("#01cdfe");
     public static RGBColor Purple { get; set; } = new RGBColor("#9400D3");
 
-
     public static List<RGBColor> DiscoColors { get; } = new List<RGBColor>
     {
       Orange,
@@ -61,6 +68,16 @@ namespace HueLightDJ.Effects
       new RGBColor(0, 0, 255), // B
       Aqua,
       Purple
+    };
+
+    public static List<RGBColor> DoubleDisco { get; } = new List<RGBColor>
+    {
+      // Blueish
+      new RGBColor("#5aa4f8"), new RGBColor("#78aff8"), new RGBColor("#ea4e59"),
+      // Red-dish
+      new RGBColor("#ea4153"), new RGBColor("#ea4957"), new RGBColor("#f23b4e"),
+      new RGBColor("#87fb55")
+
     };
   }
 }

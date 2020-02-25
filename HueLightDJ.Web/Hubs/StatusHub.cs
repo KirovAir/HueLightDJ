@@ -6,6 +6,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using HueLightDJ.Effects;
 
 namespace HueLightDJ.Web.Hubs
 {
@@ -93,6 +94,10 @@ namespace HueLightDJ.Web.Hubs
       Clients.Others.SendAsync("Bri", value);
     }
 
+    public void SetChangeAmount(int value)
+    {
+      CustomBaseEffect.ChangeAmount = value;
+    }
 
     public void StartRandom()
     {
