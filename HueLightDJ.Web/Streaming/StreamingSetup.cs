@@ -10,7 +10,6 @@ using Q42.HueApi.ColorConverters.Original;
 using Q42.HueApi.Interfaces;
 using Q42.HueApi.Models.Bridge;
 using Q42.HueApi.Models.Groups;
-using Q42.HueApi.Streaming;
 using Q42.HueApi.Streaming.Models;
 using System;
 using System.Collections.Generic;
@@ -21,315 +20,303 @@ using System.Threading.Tasks;
 
 namespace HueLightDJ.Web.Streaming
 {
-  public static class StreamingSetup
-  {
-    private static List<StreamingGroup> StreamingGroups { get; set; } = new List<StreamingGroup>();
-    private static List<LightDJStreamingHueClient> StreamingHueClients { get; set; } = new List<LightDJStreamingHueClient>();
-    public static List<EntertainmentLayer>? Layers { get; set; }
-    private static int BPM { get; set; } = 120;
-    public static Ref<TimeSpan> WaitTime { get; set; } = TimeSpan.FromMilliseconds(500);
-
-    private static Light StrobeLight { get; set; }
-    private static Light WhiteLight { get; set; }
-    private static ILocalHueClient StrobeHue { get; set; }
-
-    public static GroupConfiguration? CurrentConnection { get; set; }
-
-
-
-    private static string _groupId;
-    private static CancellationTokenSource _cts;
-
-    public static async Task<List<MultiBridgeLightLocation>> GetLocationsAsync(string groupName)
+    public static class StreamingSetup
     {
-      var configSection = await GetGroupConfigurationsAsync();
-      var currentGroup = configSection.Where(x => x.Name == groupName).FirstOrDefault();
+        private static string _groupId;
+        private static CancellationTokenSource _cts;
+        private static List<StreamingGroup> StreamingGroups { get; } = new List<StreamingGroup>();
+        private static List<LightDJStreamingHueClient> StreamingHueClients { get; } = new List<LightDJStreamingHueClient>();
+        public static List<EntertainmentLayer>? Layers { get; set; }
+        private static int BPM { get; set; } = 125;
+        public static Ref<TimeSpan> WaitTime { get; set; } = TimeSpan.FromMilliseconds(500);
 
-      var locations = new List<MultiBridgeLightLocation>();
+        private static Light StrobeLight { get; set; }
+        private static Light WhiteLight { get; set; }
+        private static ILocalHueClient StrobeHue { get; set; }
 
-      if (currentGroup == null)
-        return locations;
+        public static GroupConfiguration? CurrentConnection { get; set; }
 
-      foreach (var bridgeConfig in currentGroup.Connections)
-      {
-        var localClient = new LocalHueClient(bridgeConfig.Ip, bridgeConfig.Key);
-        var group = await localClient.GetGroupAsync(bridgeConfig.GroupId);
-
-        if (group?.Type != GroupType.Entertainment)
-          continue;
-
-        locations.AddRange(group.Locations.Select(x => new MultiBridgeLightLocation()
+        public static async Task<List<MultiBridgeLightLocation>> GetLocationsAsync(string groupName)
         {
-          Bridge = bridgeConfig.Ip,
-          GroupId = bridgeConfig.GroupId,
-          Id = x.Key,
-          X = x.Value.X,
-          Y = x.Value.Y
-        }));
-      }
+            var configSection = await GetGroupConfigurationsAsync();
+            var currentGroup = configSection.Where(x => x.Name == groupName).FirstOrDefault();
 
-      return locations;
-    }
+            var locations = new List<MultiBridgeLightLocation>();
 
-    public static async Task SetLocations(List<MultiBridgeLightLocation> locations)
-    {
-      var configSection = await GetGroupConfigurationsAsync();
+            if (currentGroup == null)
+                return locations;
 
-      var grouped = locations.GroupBy(x => x.Bridge);
+            foreach (var bridgeConfig in currentGroup.Connections)
+            {
+                var localClient = new LocalHueClient(bridgeConfig.Ip, bridgeConfig.Key);
+                var group = await localClient.GetGroupAsync(bridgeConfig.GroupId);
 
-      foreach (var group in grouped)
-      {
-        var ip = group.Key;
-        var groupId = group.First().GroupId;
-        var config = configSection.SelectMany(x => x.Connections).Where(x => x.Ip == ip && x.GroupId == groupId).FirstOrDefault();
-        if (config != null)
-        {
-          var client = new LocalHueClient(config.Ip, config.Key);
-          var bridgeLocations = group.ToDictionary(x => x.Id, l => new LightLocation() { l.X, l.Y, 0 });
-          await client.UpdateGroupLocationsAsync(groupId, bridgeLocations);
-        }
-      }
-    }
+                if (group?.Type != GroupType.Entertainment)
+                    continue;
 
-    public static async Task AlertLight(MultiBridgeLightLocation light)
-    {
-      var configSection = await GetGroupConfigurationsAsync();
+                locations.AddRange(group.Locations.Select(x => new MultiBridgeLightLocation
+                {
+                    Bridge = bridgeConfig.Ip,
+                    GroupId = bridgeConfig.GroupId,
+                    Id = x.Key,
+                    X = x.Value.X,
+                    Y = x.Value.Y
+                }));
+            }
 
-      var config = configSection.Where(x => x.Connections.Any(c => c.Ip == light.Bridge)).FirstOrDefault();
-      if (config != null)
-      {
-        foreach (var conn in config.Connections)
-        {
-          var client = new LocalHueClient(conn.Ip, conn.Key);
-          var allCommand = new LightCommand().TurnOn().SetColor(new RGBColor("0000FF")); //All blue
-          await client.SendGroupCommandAsync(allCommand, conn.GroupId);
-
-          //Only selected light red
-          if (conn.Ip == light.Bridge)
-          {
-            var alertCommand = new LightCommand().TurnOn().SetColor(new RGBColor("FF0000")); ;
-            alertCommand.Alert = Alert.Once;
-            await client.SendCommandAsync(alertCommand, new List<string> { light.Id });
-          }
-        }
-      }
-    }
-
-    public static async Task SetupAndReturnGroupAsync(string groupName)
-    {
-      var configSection = await GetGroupConfigurationsAsync();
-      var currentGroup = configSection.Where(x => x.Name == groupName).FirstOrDefault();
-      bool demoMode = currentGroup.Name == "DEMO" || currentGroup.Connections.First().Key == "DEMO";
-      bool useSimulator = demoMode ? true : currentGroup.Connections.First().UseSimulator;
-
-      //Disconnect any current connections
-      Disconnect();
-      _cts = new CancellationTokenSource();
-
-      List<Task> connectTasks = new List<Task>();
-      foreach (var bridgeConfig in currentGroup.Connections)
-      {
-        connectTasks.Add(Connect(demoMode, useSimulator, bridgeConfig));
-
-      }
-      //Connect in parallel and wait for all tasks to finish
-      await Task.WhenAll(connectTasks);
-
-      foreach (var client in StreamingHueClients)
-      {
-        var localClient = client.LocalHueClient;
-        var lights = await localClient.GetLightsAsync();
-        var light = lights.FirstOrDefault(c => c.Name.ToLower().Contains("strobe"));
-        if (light != null)
-        {
-          StrobeLight = light;
-          StrobeHue = localClient;
-          WhiteLight = lights.FirstOrDefault(c => c.Name.ToLower().Contains("kitchen"));
-          break;
-        }
-      }
-
-      var baseLayer = GetNewLayer(isBaseLayer: true);
-      var effectLayer = GetNewLayer(isBaseLayer: false);
-
-      Layers = new List<EntertainmentLayer>() { baseLayer, effectLayer };
-      CurrentConnection = currentGroup;
-      EffectSettings.LocationCenter = currentGroup.LocationCenter ?? new LightLocation() { 0, 0, 0 };
-
-      //Optional: calculated effects that are placed on this layer
-      baseLayer.AutoCalculateEffectUpdate(_cts.Token);
-      effectLayer.AutoCalculateEffectUpdate(_cts.Token);
-    }
-
-    private static async Task Connect(bool demoMode, bool useSimulator, ConnectionConfiguration bridgeConfig)
-    {
-      var hub = (IHubContext<StatusHub>)Startup.ServiceProvider.GetService(typeof(IHubContext<StatusHub>));
-      await hub.Clients.All.SendAsync("StatusMsg", $"Connecting to bridge {bridgeConfig.Ip}");
-
-      try
-      {
-        //Initialize streaming client
-        var client = new LightDJStreamingHueClient(bridgeConfig.Ip, bridgeConfig.Key, bridgeConfig.EntertainmentKey, demoMode);
-
-        //Get the entertainment group
-        Dictionary<string, LightLocation> locations = new Dictionary<string, LightLocation>();
-        if (demoMode)
-        {
-          string demoJson = await File.ReadAllTextAsync($"{bridgeConfig.Ip}_{bridgeConfig.GroupId}.json");
-          locations = JsonConvert.DeserializeObject<Dictionary<string, LightLocation>>(demoJson);
-          _groupId = bridgeConfig.GroupId;
-        }
-        else
-        {
-          var all = await client.LocalHueClient.GetEntertainmentGroups();
-          var group = all.FirstOrDefault(x => x.Id == bridgeConfig.GroupId);
-
-          if (group == null)
-            throw new Exception($"No Entertainment Group found with id {bridgeConfig.GroupId}. Create one using the Philips Hue App or the Q42.HueApi.UniversalWindows.Sample");
-          else
-          {
-            await hub.Clients.All.SendAsync("StatusMsg", $"Using Entertainment Group {group.Id} for bridge {bridgeConfig.Ip}");
-            Console.WriteLine($"Using Entertainment Group {group.Id}");
-            _groupId = group.Id;
-          }
-
-          locations = group.Locations;
+            return locations;
         }
 
-        //Create a streaming group
-        var stream = new StreamingGroup(locations);
-        stream.IsForSimulator = useSimulator;
-
-
-        //Connect to the streaming group
-        if (!demoMode)
-          await client.Connect(_groupId, simulator: useSimulator);
-
-        //Start auto updating this entertainment group
-        client.AutoUpdate(stream, _cts.Token, 50, onlySendDirtyStates: false);
-
-        StreamingHueClients.Add(client);
-        StreamingGroups.Add(stream);
-        await hub.Clients.All.SendAsync("StatusMsg", $"Succesfully connected to bridge {bridgeConfig.Ip}");
-      }
-      catch (Exception ex)
-      {
-        await hub.Clients.All.SendAsync("StatusMsg", $"Failed to connect to bridge {bridgeConfig.Ip}, exception: " + ex);
-
-        throw;
-      }
-
-    }
-
-    public async static Task<List<GroupConfiguration>> GetGroupConfigurationsAsync()
-    {
-      IEnumerable<LocatedBridge> bridges = new List<LocatedBridge>();
-      try
-      {
-        IBridgeLocator bridgeLocator = new HttpBridgeLocator();
-        bridges = await bridgeLocator.LocateBridgesAsync(TimeSpan.FromSeconds(2));
-      }
-      catch { }
-
-      var allConfig = Startup.Configuration.GetSection("HueSetup").Get<List<GroupConfiguration>>();
-
-      if (bridges == null || !bridges.Any())
-        return allConfig;
-      else
-      {
-        return allConfig.Where(x =>
-        x.Connections.Select(c => c.Ip).Intersect(bridges.Select(b => b.IpAddress)).Any()
-        || x.IsAlwaysVisible
-        ).ToList();
-      }
-    }
-
-    public static void SetBrightnessFilter(double value)
-    {
-      foreach (var stream in StreamingGroups)
-      {
-        stream.BrightnessFilter = value;
-      }
-    }
-
-    private static EntertainmentLayer GetNewLayer(bool isBaseLayer = false)
-    {
-      var layer = new EntertainmentLayer(isBaseLayer);
-      foreach (var stream in StreamingGroups)
-      {
-        var all = stream.GetNewLayer(isBaseLayer);
-        layer.AddRange(all);
-      }
-      return layer;
-    }
-
-    public static void Disconnect()
-    {
-      if (_cts != null)
-        _cts.Cancel();
-
-      foreach (var client in StreamingHueClients)
-      {
-        try
+        public static async Task SetLocations(List<MultiBridgeLightLocation> locations)
         {
-          client.LocalHueClient.SetStreamingAsync(_groupId, active: false);
-          client.Close();
+            var configSection = await GetGroupConfigurationsAsync();
+
+            var grouped = locations.GroupBy(x => x.Bridge);
+
+            foreach (var group in grouped)
+            {
+                var ip = group.Key;
+                var groupId = group.First().GroupId;
+                var config = configSection.SelectMany(x => x.Connections).Where(x => x.Ip == ip && x.GroupId == groupId).FirstOrDefault();
+                if (config != null)
+                {
+                    var client = new LocalHueClient(config.Ip, config.Key);
+                    var bridgeLocations = group.ToDictionary(x => x.Id, l => new LightLocation {l.X, l.Y, 0});
+                    await client.UpdateGroupLocationsAsync(groupId, bridgeLocations);
+                }
+            }
         }
-        catch { }
-      }
 
-      EffectService.CancelAllEffects();
+        public static async Task AlertLight(MultiBridgeLightLocation light)
+        {
+            var configSection = await GetGroupConfigurationsAsync();
 
-      Layers = null;
-      StreamingHueClients.Clear();
-      StreamingGroups.Clear();
-      CurrentConnection = null;
+            var config = configSection.Where(x => x.Connections.Any(c => c.Ip == light.Bridge)).FirstOrDefault();
+            if (config != null)
+                foreach (var conn in config.Connections)
+                {
+                    var client = new LocalHueClient(conn.Ip, conn.Key);
+                    var allCommand = new LightCommand().TurnOn().SetColor(new RGBColor("0000FF")); //All blue
+                    await client.SendGroupCommandAsync(allCommand, conn.GroupId);
 
+                    //Only selected light red
+                    if (conn.Ip == light.Bridge)
+                    {
+                        var alertCommand = new LightCommand().TurnOn().SetColor(new RGBColor("FF0000"));
+                        ;
+                        alertCommand.Alert = Alert.Once;
+                        await client.SendCommandAsync(alertCommand, new List<string> {light.Id});
+                    }
+                }
+        }
+
+        public static async Task SetupAndReturnGroupAsync(string groupName)
+        {
+            var configSection = await GetGroupConfigurationsAsync();
+            var currentGroup = configSection.Where(x => x.Name == groupName).FirstOrDefault();
+            var demoMode = currentGroup.Name == "DEMO" || currentGroup.Connections.First().Key == "DEMO";
+            var useSimulator = demoMode ? true : currentGroup.Connections.First().UseSimulator;
+
+            //Disconnect any current connections
+            Disconnect();
+            _cts = new CancellationTokenSource();
+
+            var connectTasks = new List<Task>();
+            foreach (var bridgeConfig in currentGroup.Connections) connectTasks.Add(Connect(demoMode, useSimulator, bridgeConfig));
+            //Connect in parallel and wait for all tasks to finish
+            await Task.WhenAll(connectTasks);
+
+            foreach (var client in StreamingHueClients)
+            {
+                var localClient = client.LocalHueClient;
+                var lights = (await localClient.GetLightsAsync()).ToList();
+                var light = lights.FirstOrDefault(c => c.Name.ToLower().Contains("strobe"));
+                if (light != null)
+                {
+                    StrobeLight = light;
+                    StrobeHue = localClient;
+                    WhiteLight = lights.FirstOrDefault(c => c.Name.ToLower().Contains("kitchen"));
+                    break;
+                }
+
+                CustomBaseEffect.SetWhiteLight = (on, bri) =>
+                {
+                    if (WhiteLight != null) Task.Run(() => SetWhiteLight(on, (byte) (bri / 2 * 255)));
+                };
+            }
+
+            var baseLayer = GetNewLayer(true);
+            var effectLayer = GetNewLayer();
+
+            Layers = new List<EntertainmentLayer> {baseLayer, effectLayer};
+            CurrentConnection = currentGroup;
+            EffectSettings.LocationCenter = currentGroup.LocationCenter ?? new LightLocation {0, 0, 0};
+
+            //Optional: calculated effects that are placed on this layer
+            baseLayer.AutoCalculateEffectUpdate(_cts.Token);
+            effectLayer.AutoCalculateEffectUpdate(_cts.Token);
+        }
+
+        private static async Task Connect(bool demoMode, bool useSimulator, ConnectionConfiguration bridgeConfig)
+        {
+            var hub = (IHubContext<StatusHub>) Startup.ServiceProvider.GetService(typeof(IHubContext<StatusHub>));
+            await hub.Clients.All.SendAsync("StatusMsg", $"Connecting to bridge {bridgeConfig.Ip}");
+
+            try
+            {
+                //Initialize streaming client
+                var client = new LightDJStreamingHueClient(bridgeConfig.Ip, bridgeConfig.Key, bridgeConfig.EntertainmentKey, demoMode);
+
+                //Get the entertainment group
+                var locations = new Dictionary<string, LightLocation>();
+                if (demoMode)
+                {
+                    var demoJson = await File.ReadAllTextAsync($"{bridgeConfig.Ip}_{bridgeConfig.GroupId}.json");
+                    locations = JsonConvert.DeserializeObject<Dictionary<string, LightLocation>>(demoJson);
+                    _groupId = bridgeConfig.GroupId;
+                }
+                else
+                {
+                    var all = await client.LocalHueClient.GetEntertainmentGroups();
+                    var group = all.FirstOrDefault(x => x.Id == bridgeConfig.GroupId);
+
+                    if (group == null) throw new Exception($"No Entertainment Group found with id {bridgeConfig.GroupId}. Create one using the Philips Hue App or the Q42.HueApi.UniversalWindows.Sample");
+
+                    await hub.Clients.All.SendAsync("StatusMsg", $"Using Entertainment Group {group.Id} for bridge {bridgeConfig.Ip}");
+                    Console.WriteLine($"Using Entertainment Group {group.Id}");
+                    _groupId = group.Id;
+
+                    locations = group.Locations;
+                }
+
+                //Create a streaming group
+                var stream = new StreamingGroup(locations);
+                stream.IsForSimulator = useSimulator;
+
+
+                //Connect to the streaming group
+                if (!demoMode)
+                    await client.Connect(_groupId, useSimulator);
+
+                //Start auto updating this entertainment group
+                client.AutoUpdate(stream, _cts.Token);
+
+                StreamingHueClients.Add(client);
+                StreamingGroups.Add(stream);
+                await hub.Clients.All.SendAsync("StatusMsg", $"Succesfully connected to bridge {bridgeConfig.Ip}");
+            }
+            catch (Exception ex)
+            {
+                await hub.Clients.All.SendAsync("StatusMsg", $"Failed to connect to bridge {bridgeConfig.Ip}, exception: " + ex);
+
+                throw;
+            }
+        }
+
+        public static async Task<List<GroupConfiguration>> GetGroupConfigurationsAsync()
+        {
+            IEnumerable<LocatedBridge> bridges = new List<LocatedBridge>();
+            try
+            {
+                IBridgeLocator bridgeLocator = new HttpBridgeLocator();
+                bridges = await bridgeLocator.LocateBridgesAsync(TimeSpan.FromSeconds(2));
+            }
+            catch
+            {
+            }
+
+            var allConfig = Startup.Configuration.GetSection("HueSetup").Get<List<GroupConfiguration>>();
+
+            if (bridges == null || !bridges.Any())
+                return allConfig;
+            return allConfig.Where(x =>
+                x.Connections.Select(c => c.Ip).Intersect(bridges.Select(b => b.IpAddress)).Any()
+                || x.IsAlwaysVisible
+            ).ToList();
+        }
+
+        public static void SetBrightnessFilter(double value)
+        {
+            foreach (var stream in StreamingGroups) stream.BrightnessFilter = value;
+        }
+
+        private static EntertainmentLayer GetNewLayer(bool isBaseLayer = false)
+        {
+            var layer = new EntertainmentLayer(isBaseLayer);
+            foreach (var stream in StreamingGroups)
+            {
+                var all = stream.GetNewLayer(isBaseLayer);
+                layer.AddRange(all);
+            }
+
+            return layer;
+        }
+
+        public static void Disconnect()
+        {
+            if (_cts != null)
+                _cts.Cancel();
+
+            foreach (var client in StreamingHueClients)
+                try
+                {
+                    client.LocalHueClient.SetStreamingAsync(_groupId, false);
+                    client.Close();
+                }
+                catch
+                {
+                }
+
+            EffectService.CancelAllEffects();
+
+            Layers = null;
+            StreamingHueClients.Clear();
+            StreamingGroups.Clear();
+            CurrentConnection = null;
+        }
+
+        public static async Task<bool> IsStreamingActive()
+        {
+            //Optional: Check if streaming is currently active
+            var bridgeInfo = await StreamingHueClients.First().LocalHueClient.GetBridgeAsync();
+            if (bridgeInfo == null)
+                return false;
+
+            Console.WriteLine(bridgeInfo.IsStreamingActive ? "Streaming is active" : "Streaming is not active");
+
+            return bridgeInfo.IsStreamingActive;
+        }
+
+        public static void SetStrobe(bool on)
+        {
+            var command = new LightCommand();
+            command.On = on;
+            StrobeHue.SendCommandAsync(command, new[] {StrobeLight.Id});
+        }
+
+        public static void SetWhiteLight(bool on, byte brightness)
+        {
+            var command = new LightCommand();
+            command.On = on;
+            command.Brightness = brightness;
+            StrobeHue.SendCommandAsync(command, new[] {WhiteLight.Id});
+        }
+
+        public static int GetBPM()
+        {
+            return BPM;
+        }
+
+        public static int SetBPM(int bpm)
+        {
+            BPM = bpm;
+            WaitTime.Value = TimeSpan.FromMilliseconds(60 * 1000 / bpm);
+            return GetBPM();
+        }
+
+        public static int IncreaseBPM(int value)
+        {
+            return SetBPM(BPM + value);
+        }
     }
-
-    public async static Task<bool> IsStreamingActive()
-    {
-      //Optional: Check if streaming is currently active
-      var bridgeInfo = await StreamingHueClients.First().LocalHueClient.GetBridgeAsync();
-      if (bridgeInfo == null)
-        return false;
-
-      Console.WriteLine(bridgeInfo.IsStreamingActive ? "Streaming is active" : "Streaming is not active");
-
-      return bridgeInfo.IsStreamingActive;
-
-    }
-
-    public static void SetStrobe(bool on)
-    {
-      var command = new LightCommand();
-      command.On = on;
-      StrobeHue.SendCommandAsync(command, new[] { StrobeLight.Id });
-    }
-
-    public static void SetWhiteLight(bool on, byte brightness)
-    {
-      var command = new LightCommand();
-      command.On = on;
-      command.Brightness = brightness;
-      StrobeHue.SendCommandAsync(command, new[] { WhiteLight.Id });
-    }
-
-    public static int GetBPM()
-    {
-      return BPM;
-    }
-
-    public static int SetBPM(int bpm)
-    {
-      BPM = bpm;
-      WaitTime.Value = TimeSpan.FromMilliseconds((60 * 1000) / bpm);
-      return GetBPM();
-    }
-
-    public static int IncreaseBPM(int value)
-    {
-      return SetBPM(BPM + value);
-    }
-  }
 }

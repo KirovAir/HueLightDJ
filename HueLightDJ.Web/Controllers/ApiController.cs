@@ -8,36 +8,36 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace HueLightDJ.Web.Controllers
 {
-  [Route("api")]
-  [ApiController]
-  public class ApiController : ControllerBase
-  {
-    [HttpPost("setcolors")]
-    public void SetColors([FromBody]string[,] matrix)
+    [Route("api")]
+    [ApiController]
+    public class ApiController : ControllerBase
     {
-      ManualControlService.SetColors(matrix);
-    }
+        [HttpPost("setcolors")]
+        public void SetColors([FromBody] string[,] matrix)
+        {
+            ManualControlService.SetColors(matrix);
+        }
 
-    [HttpPost("setcolorslist")]
-    public void SetColors([FromBody]List<List<string>> matrix)
-    {
-      ManualControlService.SetColors(matrix);
-    }
+        [HttpPost("setcolorslist")]
+        public void SetColors([FromBody] List<List<string>> matrix)
+        {
+            ManualControlService.SetColors(matrix);
+        }
 
-    [HttpPost("beat")]
-    public void Beat([FromBody]double intensity)
-    {
-      EffectService.Beat(intensity);
-    }
+        [HttpPost("beat")]
+        public void Beat([FromBody] double intensity)
+        {
+            EffectService.Beat(intensity);
+        }
 
-    [HttpPost("test")]
-    public void Test([FromBody]string test)
-    {
-    }
+        [HttpPost("test")]
+        public void Test([FromBody] string test)
+        {
+        }
 
-    [HttpPost("testempty")]
-    public void TestEmpty()
-    {
+        [HttpPost("testempty")]
+        public void TestEmpty()
+        {
+        }
     }
-  }
 }

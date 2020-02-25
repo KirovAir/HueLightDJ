@@ -8,7 +8,7 @@ namespace HueLightDJ.Web.Models
 {
     public class RunningEffectInfo
     {
-					public CancellationTokenSource CancellationTokenSource { get; set; }
-					public string Name { get; set; }
-		  }
+        public CancellationTokenSource CancellationTokenSource { get; set; }
+        public string Name { get; set; }
+    }
 }

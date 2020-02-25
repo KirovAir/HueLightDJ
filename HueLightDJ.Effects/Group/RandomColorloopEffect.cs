@@ -12,26 +12,26 @@ using System.Threading.Tasks;
 
 namespace HueLightDJ.Effects.Group
 {
-  [HueEffect(Name = "Random colorloop", HasColorPicker = false)]
-  public class RandomColorloopEffect : IHueGroupEffect
-  {
-    public Task Start(IEnumerable<IEnumerable<EntertainmentLight>> layer, Func<TimeSpan> waitTime, RGBColor? color, IteratorEffectMode iteratorMode, IteratorEffectMode secondaryIteratorMode, CancellationToken cancellationToken)
+    [HueEffect(Name = "Random colorloop", HasColorPicker = false)]
+    public class RandomColorloopEffect : IHueGroupEffect
     {
-      if (iteratorMode != IteratorEffectMode.All)
-      {
-        if (secondaryIteratorMode == IteratorEffectMode.Bounce
-          || secondaryIteratorMode == IteratorEffectMode.Cycle
-          || secondaryIteratorMode == IteratorEffectMode.Random
-          || secondaryIteratorMode == IteratorEffectMode.RandomOrdered
-          || secondaryIteratorMode == IteratorEffectMode.Single)
+        public Task Start(IEnumerable<IEnumerable<EntertainmentLight>> layer, Func<TimeSpan> waitTime, RGBColor? color, IteratorEffectMode iteratorMode, IteratorEffectMode secondaryIteratorMode, CancellationToken cancellationToken)
         {
-          Func<TimeSpan> customWaitMS = () => TimeSpan.FromMilliseconds((waitTime().TotalMilliseconds * layer.Count()) / layer.SelectMany(x => x).Count());
+            if (iteratorMode != IteratorEffectMode.All)
+            {
+                if (secondaryIteratorMode == IteratorEffectMode.Bounce
+                    || secondaryIteratorMode == IteratorEffectMode.Cycle
+                    || secondaryIteratorMode == IteratorEffectMode.Random
+                    || secondaryIteratorMode == IteratorEffectMode.RandomOrdered
+                    || secondaryIteratorMode == IteratorEffectMode.Single)
+                {
+                    Func<TimeSpan> customWaitMS = () => TimeSpan.FromMilliseconds((waitTime().TotalMilliseconds * layer.Count()) / layer.SelectMany(x => x).Count());
 
-          return layer.SetRandomColor(cancellationToken, iteratorMode, secondaryIteratorMode, customWaitMS, customWaitMS);
+                    return layer.SetRandomColor(cancellationToken, iteratorMode, secondaryIteratorMode, customWaitMS, customWaitMS);
+                }
+            }
+
+            return layer.SetRandomColor(cancellationToken, iteratorMode, secondaryIteratorMode, waitTime, waitTime);
         }
-      }
-
-      return layer.SetRandomColor(cancellationToken, iteratorMode, secondaryIteratorMode, waitTime, waitTime);
     }
-  }
 }

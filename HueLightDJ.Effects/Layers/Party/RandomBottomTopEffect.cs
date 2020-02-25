@@ -15,46 +15,42 @@ using System.Threading.Tasks;
 
 namespace HueLightDJ.Effects.Layers
 {
-  [HueEffect(Order = 3, Name = "Random Bottom Top Effect", Group = "Party", HasColorPicker = false)]
-  public class RandomBottomTopEffect : IHueEffect
-  {
-
-    protected virtual bool DipToBlack { get; set; } = true;
-    protected virtual double DipToBlackWait { get; set; } = 0.8;
-
-    public async Task Start(EntertainmentLayer layer, Func<TimeSpan> waitTime, RGBColor? color, CancellationToken cancellationToken)
+    [HueEffect(Order = 3, Name = "Random Bottom Top Effect", Group = "Party", HasColorPicker = false)]
+    public class RandomBottomTopEffect : IHueEffect
     {
-      var r = new Random();
-      var center = EffectSettings.LocationCenter;
-      var orderedLayer = layer.OrderByDescending(x => x.LightLocation.Angle(center.X, center.Y));
+        protected virtual bool DipToBlack { get; set; } = true;
+        protected virtual double DipToBlackWait { get; set; } = 0.8;
 
-      while (!cancellationToken.IsCancellationRequested)
-      {
-        color = RGBColor.Random();
-
-        foreach (var light in orderedLayer)
+        public async Task Start(EntertainmentLayer layer, Func<TimeSpan> waitTime, RGBColor? color, CancellationToken cancellationToken)
         {
-          Task.Run(async () =>
-          {
-            var distance = 1 + light.LightLocation.Y;
-            var timeSpan = waitTime() / 2 * distance;
-            await Task.Delay(timeSpan);
-            //Debug.WriteLine($"{light.Id} Angle {angle} and timespan {timeSpan.TotalMilliseconds}");
-            light.SetState(cancellationToken, color, 1, waitTime() / 2);
+            var r = new Random();
+            var center = EffectSettings.LocationCenter;
+            var orderedLayer = layer.OrderByDescending(x => x.LightLocation.Angle(center.X, center.Y));
 
-            if (DipToBlack)
+            while (!cancellationToken.IsCancellationRequested)
             {
-              await Task.Delay(waitTime() * DipToBlackWait);
-              light.SetBrightness(cancellationToken, 0, waitTime() * 0.1);
+                color = RGBColor.Random();
+
+                foreach (var light in orderedLayer)
+                {
+                    Task.Run(async () =>
+                    {
+                        var distance = 1 + light.LightLocation.Y;
+                        var timeSpan = waitTime() / 2 * distance;
+                        await Task.Delay(timeSpan);
+                        //Debug.WriteLine($"{light.Id} Angle {angle} and timespan {timeSpan.TotalMilliseconds}");
+                        light.SetState(cancellationToken, color, 1, waitTime() / 2);
+
+                        if (DipToBlack)
+                        {
+                            await Task.Delay(waitTime() * DipToBlackWait);
+                            light.SetBrightness(cancellationToken, 0, waitTime() * 0.1);
+                        }
+                    });
+                }
+
+                await Task.Delay(waitTime() * 1.1);
             }
-
-          });
-    
         }
-
-        await Task.Delay(waitTime() * 1.1);
-      }
-
     }
-  }
 }

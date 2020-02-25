@@ -11,43 +11,42 @@ using System.Threading.Tasks;
 
 namespace HueLightDJ.Effects
 {
-  [HueEffect(Name = "Random Pulse top bottom", Group = "Party", HasColorPicker = false)]
-  public class RandomPulseTopBottomEffect : IHueEffect
-  {
-    public async Task Start(EntertainmentLayer layer, Func<TimeSpan> waitTime, RGBColor? color, CancellationToken cancellationToken)
+    [HueEffect(Name = "Random Pulse top bottom", Group = "Party", HasColorPicker = false)]
+    public class RandomPulseTopBottomEffect : IHueEffect
     {
-      Func<TimeSpan> customWaitTime = () => waitTime() / 10;
+        public async Task Start(EntertainmentLayer layer, Func<TimeSpan> waitTime, RGBColor? color, CancellationToken cancellationToken)
+        {
+            Func<TimeSpan> customWaitTime = () => waitTime() / 10;
 
-      var bottomPulseEffect = new Q42.HueApi.Streaming.Effects.RandomPulseEffect(waitTime: customWaitTime);
-      bottomPulseEffect.AutoRepeat = false;
-      bottomPulseEffect.Y = -1;
-      layer.PlaceEffect(bottomPulseEffect);
+            var bottomPulseEffect = new Q42.HueApi.Streaming.Effects.RandomPulseEffect(waitTime: customWaitTime);
+            bottomPulseEffect.AutoRepeat = false;
+            bottomPulseEffect.Y = -1;
+            layer.PlaceEffect(bottomPulseEffect);
 
-      var topPulseEffect = new Q42.HueApi.Streaming.Effects.RandomPulseEffect(waitTime: customWaitTime);
-      topPulseEffect.AutoRepeat = false;
-      topPulseEffect.Y = 1;
-      layer.PlaceEffect(topPulseEffect);
+            var topPulseEffect = new Q42.HueApi.Streaming.Effects.RandomPulseEffect(waitTime: customWaitTime);
+            topPulseEffect.AutoRepeat = false;
+            topPulseEffect.Y = 1;
+            layer.PlaceEffect(topPulseEffect);
 
-      while(!cancellationToken.IsCancellationRequested)
-      {
-        bottomPulseEffect.Start();
+            while (!cancellationToken.IsCancellationRequested)
+            {
+                bottomPulseEffect.Start();
 
-        await Task.Delay(waitTime() * 2.2);
+                await Task.Delay(waitTime() * 2.2);
 
-        topPulseEffect.Start();
+                topPulseEffect.Start();
 
-        await Task.Delay(waitTime() * 2.2);
-      }
+                await Task.Delay(waitTime() * 2.2);
+            }
 
-      cancellationToken.Register(() =>
-      {
-        bottomPulseEffect.Stop();
-        layer.Effects.Remove(bottomPulseEffect);
+            cancellationToken.Register(() =>
+            {
+                bottomPulseEffect.Stop();
+                layer.Effects.Remove(bottomPulseEffect);
 
-        topPulseEffect.Stop();
-        layer.Effects.Remove(topPulseEffect);
-      });
-
+                topPulseEffect.Stop();
+                layer.Effects.Remove(topPulseEffect);
+            });
+        }
     }
-  }
 }

@@ -12,19 +12,19 @@ using System.Threading.Tasks;
 
 namespace HueLightDJ.Effects
 {
-  [HueEffect(Order = 6, Name = "Quick Random Flash", Group = "Flash", DefaultColor = "#FFFFFF")]
-  public class QuickFlashRandomEffect : IHueEffect
-  {
-    public Task Start(EntertainmentLayer layer, Func<TimeSpan> waitTime, RGBColor? color, CancellationToken cancellationToken)
+    [HueEffect(Order = 6, Name = "Quick Random Flash", Group = "Flash", DefaultColor = "#FFFFFF")]
+    public class QuickFlashRandomEffect : IHueEffect
     {
-      if (!color.HasValue)
-        color = RGBColor.Random();
+        public Task Start(EntertainmentLayer layer, Func<TimeSpan> waitTime, RGBColor? color, CancellationToken cancellationToken)
+        {
+            if (!color.HasValue)
+                color = RGBColor.Random();
 
-      var groupCount = layer.Count / 3;
+            var groupCount = layer.Count / 3;
 
-      Func<TimeSpan> customWaitMS = () => TimeSpan.FromMilliseconds((waitTime().TotalMilliseconds * 2) / groupCount);
+            Func<TimeSpan> customWaitMS = () => TimeSpan.FromMilliseconds((waitTime().TotalMilliseconds * 2) / groupCount);
 
-      return layer.OrderBy(x => Guid.NewGuid()).ChunkByGroupNumber(groupCount).FlashQuick(cancellationToken, color, IteratorEffectMode.Random, waitTime: customWaitMS);
+            return layer.OrderBy(x => Guid.NewGuid()).ChunkByGroupNumber(groupCount).FlashQuick(cancellationToken, color, IteratorEffectMode.Random, waitTime: customWaitMS);
+        }
     }
-  }
 }

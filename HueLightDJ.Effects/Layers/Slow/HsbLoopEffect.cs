@@ -13,24 +13,23 @@ using System.Threading.Tasks;
 
 namespace HueLightDJ.Effects.Layers
 {
-  [HueEffect(Order = 2, Name = "HSB Loop Effect", Group = "Slow", HasColorPicker = false)]
-  public class HsbLoopEffect : IHueEffect
-  {
-    public async Task Start(EntertainmentLayer layer, Func<TimeSpan> waitTime, RGBColor? color, CancellationToken cancellationToken)
+    [HueEffect(Order = 2, Name = "HSB Loop Effect", Group = "Slow", HasColorPicker = false)]
+    public class HsbLoopEffect : IHueEffect
     {
-      HSB hsb = new HSB(0, 255, 255);
+        public async Task Start(EntertainmentLayer layer, Func<TimeSpan> waitTime, RGBColor? color, CancellationToken cancellationToken)
+        {
+            HSB hsb = new HSB(0, 255, 255);
 
-      while (!cancellationToken.IsCancellationRequested)
-      {
-        layer.SetState(cancellationToken, hsb.GetRGB(), 1);
+            while (!cancellationToken.IsCancellationRequested)
+            {
+                layer.SetState(cancellationToken, hsb.GetRGB(), 1);
 
-        await Task.Delay(waitTime() / 10);
-        hsb.Hue += 100;
+                await Task.Delay(waitTime() / 10);
+                hsb.Hue += 100;
 
-        if (hsb.Hue >= HSB.HueMaxValue)
-          hsb.Hue = 0;
-      }
-
+                if (hsb.Hue >= HSB.HueMaxValue)
+                    hsb.Hue = 0;
+            }
+        }
     }
-  }
 }

@@ -12,29 +12,29 @@ using System.Threading.Tasks;
 
 namespace HueLightDJ.Effects.Group
 {
-  [HueEffect(Name = "Quick Flash", DefaultColor ="#FFFFFF")]
-  public class QuickFlashEffect : IHueGroupEffect
-  {
-    public Task Start(IEnumerable<IEnumerable<EntertainmentLight>> layer, Func<TimeSpan> waitTime, RGBColor? color, IteratorEffectMode iteratorMode, IteratorEffectMode secondaryIteratorMode, CancellationToken cancellationToken)
+    [HueEffect(Name = "Quick Flash", DefaultColor = "#FFFFFF")]
+    public class QuickFlashEffect : IHueGroupEffect
     {
-      if (!color.HasValue)
-        color = RGBColor.Random();
-
-      if (iteratorMode != IteratorEffectMode.All)
-      {
-        if(secondaryIteratorMode == IteratorEffectMode.Bounce
-          || secondaryIteratorMode == IteratorEffectMode.Cycle
-          || secondaryIteratorMode == IteratorEffectMode.Random
-          || secondaryIteratorMode == IteratorEffectMode.RandomOrdered
-          || secondaryIteratorMode == IteratorEffectMode.Single)
+        public Task Start(IEnumerable<IEnumerable<EntertainmentLight>> layer, Func<TimeSpan> waitTime, RGBColor? color, IteratorEffectMode iteratorMode, IteratorEffectMode secondaryIteratorMode, CancellationToken cancellationToken)
         {
-          Func<TimeSpan> customWaitMS = () => TimeSpan.FromMilliseconds((waitTime().TotalMilliseconds * layer.Count()) / layer.SelectMany(x => x).Count());
+            if (!color.HasValue)
+                color = RGBColor.Random();
 
-          return layer.FlashQuick(cancellationToken, color, iteratorMode, secondaryIteratorMode, waitTime: customWaitMS);
+            if (iteratorMode != IteratorEffectMode.All)
+            {
+                if (secondaryIteratorMode == IteratorEffectMode.Bounce
+                    || secondaryIteratorMode == IteratorEffectMode.Cycle
+                    || secondaryIteratorMode == IteratorEffectMode.Random
+                    || secondaryIteratorMode == IteratorEffectMode.RandomOrdered
+                    || secondaryIteratorMode == IteratorEffectMode.Single)
+                {
+                    Func<TimeSpan> customWaitMS = () => TimeSpan.FromMilliseconds((waitTime().TotalMilliseconds * layer.Count()) / layer.SelectMany(x => x).Count());
+
+                    return layer.FlashQuick(cancellationToken, color, iteratorMode, secondaryIteratorMode, waitTime: customWaitMS);
+                }
+            }
+
+            return layer.FlashQuick(cancellationToken, color, iteratorMode, secondaryIteratorMode, waitTime: waitTime);
         }
-      }
-
-      return layer.FlashQuick(cancellationToken, color, iteratorMode, secondaryIteratorMode, waitTime: waitTime);
     }
-  }
 }
