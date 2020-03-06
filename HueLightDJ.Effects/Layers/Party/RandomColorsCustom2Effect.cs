@@ -8,7 +8,7 @@ using Q42.HueApi.Streaming.Models;
 
 namespace HueLightDJ.Effects
 {
-    [HueEffect(Name = "Jesse Custom 2", Group = "Party", HasColorPicker = false)]
+    [HueEffect(Name = "Jesse2 Change4", Group = "Party", HasColorPicker = false)]
     public class RandomColorsCustom2Effect : CustomBaseEffect, IHueEffect
     {
         public async Task Start(EntertainmentLayer layer, Func<TimeSpan> waitTime, RGBColor? color, CancellationToken cancellationToken)
@@ -47,6 +47,7 @@ namespace HueLightDJ.Effects
                         HiLowBrightness();
 
                     bri = HiLowBrightness();
+                    SetWhiteLight(true, HighLowBriIndex);
                     foreach (var light in layer)
                     {
                         light.SetBrightness(cancellationToken, bri, waitTime() / 2);

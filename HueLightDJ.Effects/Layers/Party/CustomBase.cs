@@ -10,7 +10,7 @@ namespace HueLightDJ.Effects
         public readonly Random Random = new Random();
         public int Index = 0;
         public List<RGBColor> Colors = new List<RGBColor>();
-        public static Action<bool, double> SetWhiteLight = (on, bri) => { };
+        public static Action<bool, int> SetWhiteLight = (on, index) => { };
 
         public double RandomBrightness()
         {
@@ -18,12 +18,13 @@ namespace HueLightDJ.Effects
             return brightness;
         }
 
-        private static readonly List<double> HighLowBri = new List<double> {0.6, 0.7, 0.8, 0.9, 1, 0.9, 0.8, 0.7};
-        private int _highLowBriIndex = 0;
+        public static readonly List<byte> HighLowBriWhite = new List<byte> { 10, 50, 70, 90, 110, 90, 70, 20 };
+        public static readonly List<double> HighLowBri = new List<double> {0.6, 0.7, 0.8, 0.9, 1, 0.9, 0.8, 0.7};
+        public int HighLowBriIndex = 0;
 
         public double HiLowBrightness()
         {
-            return GetNext(HighLowBri, ref _highLowBriIndex);
+            return GetNext(HighLowBri, ref HighLowBriIndex);
         }
 
         public RGBColor GetNext()

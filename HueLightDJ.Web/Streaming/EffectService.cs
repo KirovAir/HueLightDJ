@@ -176,7 +176,7 @@ namespace HueLightDJ.Web.Streaming
                 }
             }, autoModeCts.Token);
 
-            Task.Run(async () =>
+            /*Task.Run(async () =>
             {
                 var random = new Random();
 
@@ -194,7 +194,7 @@ namespace HueLightDJ.Web.Streaming
                 }
 
                 StreamingSetup.SetWhiteLight(false, 0);
-            }, autoModeCts.Token);
+            }, autoModeCts.Token);*/
 
             Task.Run(async () =>
             {

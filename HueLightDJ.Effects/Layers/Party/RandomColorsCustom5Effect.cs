@@ -10,7 +10,7 @@ using Q42.HueApi.Streaming.Models;
 
 namespace HueLightDJ.Effects
 {
-    [HueEffect(Name = "Jesse Custom 5", Group = "Party", HasColorPicker = false)]
+    [HueEffect(Name = "Jesse SnakeFill", Group = "Party", HasColorPicker = false)]
     public class RandomColorsCustom5Effect : CustomBaseEffect, IHueEffect
     {
         public async Task Start(EntertainmentLayer layer, Func<TimeSpan> waitTime, RGBColor? color, CancellationToken cancellationToken)
@@ -39,6 +39,7 @@ namespace HueLightDJ.Effects
                         }
                     }
 
+                    SetWhiteLight(true, HighLowBriIndex);
                     foreach (var otherLight in layer.Where(c => !doneIds.Contains(c.Id)))
                     {
                         otherLight.SetBrightness(cancellationToken, otherBrightness, waitTime() / 2);

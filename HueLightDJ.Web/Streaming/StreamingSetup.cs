@@ -13,6 +13,7 @@ using Q42.HueApi.Models.Groups;
 using Q42.HueApi.Streaming.Models;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Threading;
@@ -136,13 +137,26 @@ namespace HueLightDJ.Web.Streaming
                     StrobeLight = light;
                     StrobeHue = localClient;
                     WhiteLight = lights.FirstOrDefault(c => c.Name.ToLower().Contains("kitchen"));
+
+                    //while (true)
+                    //{
+                    //    for (int i = 0; i < CustomBaseEffect.HighLowBriWhite.Count; i++)
+                    //    {
+                    //        SetWhiteLight(true, CustomBaseEffect.HighLowBriWhite[i]);
+                    //        await Task.Delay(500);
+                    //    }
+                    //}
+
+                    CustomBaseEffect.SetWhiteLight = (on, index) =>
+                    {
+                        if (WhiteLight != null)
+                        {
+                            var bri = CustomBaseEffect.HighLowBriWhite[index];
+                            Task.Run(() => SetWhiteLight(on, bri));
+                        }
+                    };
                     break;
                 }
-
-                CustomBaseEffect.SetWhiteLight = (on, bri) =>
-                {
-                    if (WhiteLight != null) Task.Run(() => SetWhiteLight(on, (byte) (bri / 2 * 255)));
-                };
             }
 
             var baseLayer = GetNewLayer(true);
@@ -294,12 +308,20 @@ namespace HueLightDJ.Web.Streaming
             StrobeHue.SendCommandAsync(command, new[] {StrobeLight.Id});
         }
 
-        public static void SetWhiteLight(bool on, byte brightness)
+        private static bool _sending = false;
+        private static DateTime _lastSend = DateTime.Now;
+        public static async Task SetWhiteLight(bool on, byte brightness)
         {
-            var command = new LightCommand();
-            command.On = on;
-            command.Brightness = brightness;
-            StrobeHue.SendCommandAsync(command, new[] {WhiteLight.Id});
+            if (_sending || (DateTime.Now - _lastSend).TotalMilliseconds < 200)
+            {
+                return;
+            }
+
+            _sending = true;
+            var command = new LightCommand {On = on, Brightness = brightness};
+            await StrobeHue.SendCommandAsync(command, new[] {WhiteLight.Id});
+            _sending = false;
+            _lastSend = DateTime.Now;
         }
 
         public static int GetBPM()
